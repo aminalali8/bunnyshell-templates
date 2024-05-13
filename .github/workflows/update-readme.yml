@@ -40,6 +40,7 @@ jobs:
         # Stage and commit the changes if there are any
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
+        git pull
         git add README.md
         git diff --staged --quiet || git commit -m "Update README with template links"
         git push
