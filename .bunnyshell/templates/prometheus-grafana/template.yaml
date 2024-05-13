@@ -1,0 +1,15 @@
+name: Monitoring - Prometheus + Grafana Stack
+description: Helm Chart to deploy prometheus and grafana monitoring
+tags:
+   - prometheus
+   - grafana
+   - helm
+   - thanos
+icons: [ 'prometheus', 'grafana', 'helm', 'thanos' ]
+stack:
+  packages:
+    - name: Prometheus
+      version: ''
+    - name: Grafana
+      version: ''
+discoverable: true

@@ -1,0 +1,79 @@
+kind: Environment
+name: Monitoring
+type: primary
+urlHandle: dvhuja
+components:
+    -
+        kind: Helm
+        name: my-app-release
+        runnerImage: 'dtzar/helm-kubectl:3.8.2'
+        deploy:
+            - |
+                cat << EOF > my_values.yaml
+                  alertmanager:
+                    alertmanagerSpec:
+                        storage:
+                          volumeClaimTemplate:
+                            spec:
+                              storageClassName: gp2
+                              accessModes: ["ReadWriteOnce"]
+                              resources:
+                                requests:
+                                  storage: 10Gi
+                        podMetadata:
+                            labels:
+                                app.kubernetes.io/instance-my-app-release: bns
+                                app.kubernetes.io/part-of: env-{{env.unique}}
+                    ingress:
+                      enabled: true
+                      ingressClassName: bns-nginx
+                      hosts: 
+                        - alertmanager-{{env.base_domain}}
+                      paths: 
+                        - /
+                  grafana:
+                    persistence:
+                      enabled: true
+                    enabled: true
+                    adminPassword: prom-operator
+                    ingress:
+                      enabled: true
+                      ingressClassName: bns-nginx
+                      hosts: 
+                        - grafana-{{env.base_domain}}
+                      path: /
+                    sidecar:
+                      datasources: 
+                        uid: prometheus
+                        url: https://prometheus-{{env.base_domain}}
+                  prometheus:
+                    prometheusSpec:
+                        storageSpec:
+                          volumeClaimTemplate:
+                              spec:
+                                storageClassName: gp2
+                                accessModes: ["ReadWriteOnce"]
+                                resources:
+                                  requests:
+                                    storage: 10Gi
+                        podMetadata:
+                            labels:
+                                app.kubernetes.io/instance-my-app-release: bns
+                                app.kubernetes.io/part-of: env-{{env.unique}}
+                    ingress:
+                      enabled: true
+                      ingressClassName: bns-nginx
+                      hosts: 
+                        - prometheus-{{env.base_domain}}
+                      paths:
+                        - /
+                EOF
+            - 'helm repo add prometheus-community https://prometheus-community.github.io/helm-charts'
+            - 'helm repo add stable https://charts.helm.sh/stable'
+            - 'helm upgrade --install --namespace {{ env.k8s.namespace }} --dependency-update --post-renderer /bns/helpers/helm/add_labels/kustomize -f my_values.yaml prometheus-{{ env.unique }} prometheus-community/kube-prometheus-stack'
+        destroy:
+            - 'helm uninstall prometheus-{{ env.unique }} --namespace {{ env.k8s.namespace }}'
+        start:
+            - 'helm upgrade --namespace {{ env.k8s.namespace }} --post-renderer /bns/helpers/helm/add_labels/kustomize --reuse-values --set alertmanage.alertmanagerSpec.replicas=1 --set prometheus.prometheusSpec.replicas=1  prometheus-{{ env.unique }} prometheus-community/kube-prometheus-stack'
+        stop:
+            - 'helm upgrade --namespace {{ env.k8s.namespace }} --post-renderer /bns/helpers/helm/add_labels/kustomize --reuse-values --set alertmanage.alertmanagerSpec.replicas=0 --set prometheus.prometheusSpec.replicas=0  prometheus-{{ env.unique }} prometheus-community/kube-prometheus-stack'

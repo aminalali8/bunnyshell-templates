@@ -1,0 +1,7 @@
+name: Kubernetes Dashboard
+description: Deploys a kubernetes Dashboard.
+tags:
+  - k8s
+    - helm
+icons: [ 'k8s', 'helm' ]
+discoverable: true

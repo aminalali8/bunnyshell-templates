@@ -1,0 +1,50 @@
+kind: Environment
+name: GameServer
+type: primary
+components:
+  -
+    kind: KubernetesManifest
+    name: simple-game-server-fleet
+    runnerImage: 'alpine/k8s:1.22.15'
+    deploy:
+      - 'kustomize create --autodetect --recursive --labels=app.kubernetes.io/instance-simple-game-server-fleet:bns,app.kubernetes.io/part-of:env-{{ env.unique }} --namespace {{ env.k8s.namespace }}'
+      - 'kubectl apply -k fleet.yaml'
+    destroy:
+      - 'kustomize create --autodetect --recursive --namespace {{ env.k8s.namespace }}'
+      - 'kubectl delete -k fleet.yaml'
+    start:
+      - 'kubectl scale --replicas=3 --namespace {{ env.k8s.namespace }} fleet simple-game-server'
+    stop:
+      - 'kubectl scale --replicas=0 --namespace {{ env.k8s.namespace }} fleet simple-game-server'
+    exportVariables: {}
+    gitRepo: 'https://github.com/aminalali8/agones-helm.git'
+    gitBranch: main
+    gitApplicationPath: /gameserver/k8s/
+  -
+    kind: KubernetesManifest
+    name: gameserver-allocation
+    runnerImage: 'alpine/k8s:1.22.15'
+    deploy:
+      - 'kustomize create --autodetect --recursive --labels=app.kubernetes.io/instance-gameserver-allocation:bns,app.kubernetes.io/part-of:env-{{ env.unique }} --namespace {{ env.k8s.namespace }}'
+      - 'kubectl apply -k gameserverallocation.yaml'
+    destroy:
+      - 'kustomize create --autodetect --recursive --namespace {{ env.k8s.namespace }}'
+      - 'kubectl delete -k gameserverallocation.yaml'
+    exportVariables: {}
+    gitRepo: 'https://github.com/aminalali8/agones-helm.git'
+    gitBranch: main
+    gitApplicationPath: /gameserver/k8s/
+  -
+    kind: KubernetesManifest
+    name: fleet-autoscaler
+    runnerImage: 'alpine/k8s:1.22.15'
+    deploy:
+      - 'kustomize create --autodetect --recursive --labels=app.kubernetes.io/instance-fleet-autoscaler:bns,app.kubernetes.io/part-of:env-{{ env.unique }} --namespace {{ env.k8s.namespace }}'
+      - 'kubectl apply -k fleetautoscaler.yaml'
+    destroy:
+      - 'kustomize create --autodetect --recursive --namespace {{ env.k8s.namespace }}'
+      - 'kubectl delete -k fleetautoscaler.yaml'
+    exportVariables: {}
+    gitRepo: 'https://github.com/aminalali8/agones-helm.git'
+    gitBranch: main
+    gitApplicationPath: /gameserver/k8s/

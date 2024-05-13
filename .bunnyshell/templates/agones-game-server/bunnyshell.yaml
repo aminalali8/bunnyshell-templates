@@ -1,0 +1,109 @@
+kind: Environment
+name: Draft-v1
+type: primary
+components:
+  -
+    kind: Helm
+    name: agones-system
+    runnerImage: 'dtzar/helm-kubectl:3.8.2'
+    deploy:
+      - 'helm repo add agones https://agones.dev/chart/stable'
+      - |
+        cat << EOF > my_values.yaml
+            agones:
+              controller:
+                http:
+                  port: 8080
+                replicas: 2
+                pdb:
+                  minAvailable: 1
+              ping:
+                replicas: 2
+                http:
+                  expose: true
+                  response: ok
+                  port: 80
+                  nodePort: 0 # nodePort will be used if the serviceType is set to NodePort
+                  serviceType: LoadBalancer
+                  loadBalancerIP: ""
+                  loadBalancerSourceRanges: []
+                  annotations: {}
+                udp:
+                  expose: true
+                  rateLimit: 20
+                  port: 50000
+                  nodePort: 0 # nodePort will be used if the serviceType is set to NodePort
+                  serviceType: LoadBalancer
+                  loadBalancerIP: ""
+                  loadBalancerSourceRanges: []
+                  annotations: {}
+              allocator:
+                install: true
+                replicas: 3
+                service:
+                  name: agones-allocator
+                  serviceType: LoadBalancer
+                  loadBalancerIP: ""
+                  loadBalancerSourceRanges: []
+                  annotations: {}
+                  http:
+                    enabled: true
+                    port: 443
+                    portName: https
+                    targetPort: 8443
+                    nodePort: 0 # nodePort will be used if the serviceType is set to NodePort
+                  grpc:
+                    enabled: true
+                    port: 443
+                    portName: grpc
+                    targetPort: 8443
+                    nodePort: 0 # nodePort will be used if the serviceType is set to NodePort
+                serviceMetrics:
+                  name: agones-allocator-metrics-service
+                  annotations: {}
+                  http:
+                    enabled: true
+                    port: 8080
+                    portName: http
+              image:
+                registry: us-docker.pkg.dev/agones-images/release
+                tag: 1.33.0
+                controller:
+                  name: agones-controller
+                  pullPolicy: IfNotPresent
+                # extensions settings ignored unless `SplitControllerAndExtensions` feature gate is enabled
+                extensions:
+                  name: agones-extensions
+                  pullPolicy: IfNotPresent
+                sdk:
+                  name: agones-sdk
+                  cpuRequest: 30m
+                  cpuLimit: 0
+                  memoryRequest: 0
+                  memoryLimit: 0
+                  alwaysPull: false
+                ping:
+                  name: agones-ping
+                  pullPolicy: IfNotPresent
+                allocator:
+                  name: agones-allocator
+                  pullPolicy: IfNotPresent
+            gameservers:
+              namespaces:
+                - default
+              minPort: 7000
+              maxPort: 8000
+              podPreserveUnknownFields: false
+        EOF
+      - 'helm upgrade --install --create-namespace --namespace {{ env.k8s.namespace }} --dependency-update --post-renderer /bns/helpers/helm/add_labels/kustomize -f my_values.yaml agones-{{ env.unique }} agones/agones'
+    destroy:
+      - 'helm uninstall agones-{{ env.unique }} --namespace {{ env.k8s.namespace }}'
+    start:
+      - '#helm upgrade --namespace {{ env.k8s.namespace }} --post-renderer /bns/helpers/helm/add_labels/kustomize --reuse-values --set replicas=1 agones-{{ env.unique }} agones/agones'
+    stop:
+      - '#helm upgrade --namespace {{ env.k8s.namespace }} --post-renderer /bns/helpers/helm/add_labels/kustomize --reuse-values --set replicas=0 agones-{{ env.unique }} agones/agones'
+    exportVariables: {}
+#----------------------------------------------------------------
+#helm repo add agones https://agones.dev/chart/stable
+#helm repo update
+#helm install my-release --namespace agones-system --create-namespace agones/agones

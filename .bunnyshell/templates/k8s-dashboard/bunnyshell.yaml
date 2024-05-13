@@ -1,0 +1,107 @@
+kind: Environment
+name: KuberenetesDashboard
+type: primary
+components:
+  - kind: KubernetesManifest
+    name: kubedashuser
+    runnerImage: "alpine/k8s:1.22.15"
+    deploy:
+      - |
+          cat << EOF > admin-user.yaml
+              apiVersion: v1
+              kind: ServiceAccount
+              metadata:
+                  name: admin-user
+                  namespace: {{ env.k8s.namespace }}
+          EOF
+      - |
+          cat << EOF > cluster-role-binding.yaml
+              apiVersion: rbac.authorization.k8s.io/v1
+              kind: ClusterRoleBinding
+              metadata:
+                  name: admin-user
+              roleRef:
+                  apiGroup: rbac.authorization.k8s.io
+                  kind: ClusterRole
+                  name: cluster-admin
+              subjects:
+                  - kind: ServiceAccount
+                    name: admin-user
+                    namespace: {{ env.k8s.namespace }}
+          EOF
+      - "kustomize create --autodetect --recursive --labels=app.kubernetes.io/instance-kubedashuser:bns,app.kubernetes.io/part-of:env-{{ env.unique }} --namespace {{ env.k8s.namespace }}"
+      - "kubectl apply -k ."
+      - "ADMIN_NAME=$(kubectl get secrets -n {{ env.k8s.namespace }} | grep admin-user | awk '{print $1}')"
+      - "AUTH_TOKEN=$(kubectl describe secret $ADMIN_NAME -n {{ env.k8s.namespace }} | grep 'token:' | awk '{print $2}')"
+      - "echo $AUTH_TOKEN"
+    destroy:
+      - "kustomize create --autodetect --recursive --namespace {{ env.k8s.namespace }}"
+      - "kubectl delete -k ."
+    start:
+      - 'echo "N/A"'
+    stop:
+      - 'echo "N/A"'
+    exportVariables:
+      - AUTH_TOKEN
+  - kind: Helm
+    name: kubedash
+    runnerImage: "dtzar/helm-kubectl:3.8.2"
+    deploy:
+      - |
+          cat << EOF > my_values.yaml
+            ## Number of replicas
+            replicaCount: 1
+
+            ## Node labels for pod assignment
+            ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
+            ##
+            nodeSelector: {}
+
+            ## Pod resource requests & limits
+            resources:
+              requests:
+                cpu: 100m
+                memory: 200Mi
+              limits:
+                cpu: 2
+                memory: 200Mi
+
+            service:
+              type: ClusterIP
+              # Dashboard service port
+              externalPort: 443
+            ingress:
+              enabled: true
+              className: "bns-nginx"
+              ## Both `/` and `/*` are required to work on gce ingress.
+              paths: 
+                - '/'
+                #- '/*'
+              ## Kubernetes Dashboard Ingress hostnames
+              ## Must be provided if Ingress is enabled
+              ##
+              hosts:
+                - 'kubedash-{{env.base_domain}}'
+
+            metrics-server:
+              enabled: false
+              ## Example for additional args
+              # args:
+              #  - --kubelet-preferred-address-types=InternalIP
+              #  - --kubelet-insecure-tls
+
+            serviceAccount:
+              # Specifies whether a service account should be created
+              create: true
+              # The name of the service account to use.
+              # If not set and create is true, a name is generated using the fullname template
+              name: admin
+          EOF
+      - "helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/"
+      - "helm upgrade --install --namespace {{ env.k8s.namespace }} --dependency-update --post-renderer /bns/helpers/helm/add_labels/kustomize -f my_values.yaml kubedash-{{ env.unique }} kubernetes-dashboard/kubernetes-dashboard"
+    destroy:
+      - "helm uninstall kubedash-{{ env.unique }} --namespace {{ env.k8s.namespace }}"
+    start:
+      - 'echo "N/A"'
+    stop:
+      - 'echo "N/A"'
