@@ -11,6 +11,9 @@ jobs:
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # Ensures the entire git history is checked out
+
 
     - name: Generate Directory List and Update README
       run: |
@@ -42,8 +45,8 @@ jobs:
         mv temp_readme.md README.md
 
         # Stage and commit the changes if there are any
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
+        git config user.email "action@github.com"
+        git config user.name "GitHub Action"
         git config pull.rebase false
         git pull
         git add README.md
