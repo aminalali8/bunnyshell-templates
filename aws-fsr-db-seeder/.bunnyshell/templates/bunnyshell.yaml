@@ -1,0 +1,138 @@
+kind: Environment
+name: Template-FSR-DB-Seeder
+type: primary
+templateVariables:
+  snapshot_handle: "snapshot id goes here"
+  volume_snapshot_class: "vsc-ebs"
+  volume_name: "db-data"
+  volume_size: "10Gi"
+  MYSQL_PASSWORD: password
+  MYSQL_ROOT_PASSWORD: root
+  MYSQL_USER: admin
+components:
+  - kind: KubernetesManifest
+    name: volume-snapshot-generator
+    gitBranch: master
+    gitApplicationPath: /
+    runnerImage: "alpine/k8s:1.22.15"
+    deploy:
+      - "kustomize create --autodetect --recursive --labels=app.kubernetes.io/instance-{{ component.name }}:bns,app.kubernetes.io/part-of:env-{{ env.unique }} --namespace {{ env.k8s.namespace }}"
+      - |
+        trgt_namespace={{ env.k8s.namespace }}
+        # Setup the volume snapshot name and content name
+        volume_snapshot_name=vs-{{ env.unique }}
+        volume_snapshot_content_name=vsc-{{ env.unique }}
+        # Change this to the snapshot id from AWS
+        snapshot_handle="{{template.vars.snapshot_handle}}" # this must be set either manually or through an env variable
+        # PVC Name
+        # Name of Storage class created for ebs csi driver
+        storage_class='bns-disk-sc' # setup when setting up ebs drivers
+        volume_snapshot_class="{{template.vars.volume_snapshot_class}}"
+
+        # Apply the updated YAML file
+        cat <<EOF > volume-snapshot-content.yaml
+        apiVersion: snapshot.storage.k8s.io/v1
+        kind: VolumeSnapshotContent
+        metadata:
+          annotations:
+            snapshot.storage.kubernetes.io/allow-volume-mode-change: "true"
+          name: $volume_snapshot_content_name
+        spec:
+          deletionPolicy: Retain
+          driver: ebs.csi.aws.com
+          source:
+            snapshotHandle: $snapshot_handle
+          volumeSnapshotClassName: $volume_snapshot_class
+          sourceVolumeMode: FileSystem
+          volumeSnapshotRef:
+            kind: VolumeSnapshot
+            name: $volume_snapshot_name
+            namespace: $trgt_namespace
+        EOF
+
+        # Generate a volume snapshot in the correct namespace
+        cat <<EOF > volume-snapshot.yaml
+        apiVersion: snapshot.storage.k8s.io/v1
+        kind: VolumeSnapshot
+        metadata:
+          name: $volume_snapshot_name
+          namespace: $trgt_namespace
+        spec:
+          source:
+            volumeSnapshotContentName: $volume_snapshot_content_name
+          volumeSnapshotClassName: $volume_snapshot_class 
+        EOF
+
+        kubectl apply -f volume-snapshot-content.yaml
+        kubectl apply -f volume-snapshot.yaml
+    destroy:
+      - "kustomize create --autodetect --recursive --namespace {{ env.k8s.namespace }}"
+      - |
+        # Define the namespace you want to update to
+        # Change this to the namespace you wish to deploy on 
+        trgt_namespace="{{env.k8s.namespace}}" 
+        # Setup the volume snapshot name and content name
+        volume_snapshot_name="vs-{{env.unique}}"
+        volume_snapshot_content_name="vsc-{{env.unique}}"
+
+        kubectl delete -n $trgt_namespace volumesnapshot $volume_snapshot_name
+        kubectl delete volumesnapshotcontent $volume_snapshot_content_name
+  - kind: KubernetesManifest
+    name: fsr-pvc-injector
+    gitBranch: master
+    gitApplicationPath: /
+    runnerImage: "alpine/k8s:1.22.15"
+    deploy:
+      - "kustomize create --autodetect --recursive --labels=app.kubernetes.io/instance-{{ component.name }}:bns,app.kubernetes.io/part-of:env-{{ env.unique }} --namespace {{ env.k8s.namespace }}"
+      - |
+        # Create PVC for environment Post deploy of DB 
+        pvc_name={{template.vars.volume_name}}-{{env.unique}}
+        volume_snapshot_name=vs-{{ env.unique }}
+        kubectl scale --replicas=0 deployment mysql -n {{env.k8s.namespace}} # <--- this should be the name of the component that the pvc is bound to
+        kubectl delete pvc -n {{env.k8s.namespace}} $pvc_name
+        cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: $pvc_name
+            namespace: {{env.k8s.namespace}}
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            storageClassName: bns-disk-sc
+            resources:
+              requests:
+                storage: {{template.vars.volume_size}} # Must change this to whatever size the snapshot is
+            dataSource:
+              name: $volume_snapshot_name
+              kind: VolumeSnapshot
+              apiGroup: snapshot.storage.k8s.io
+        EOF
+        kubectl scale --replicas=1 deployment mysql -n {{env.k8s.namespace}}
+    destroy:
+      - "kustomize create --autodetect --recursive --namespace {{ env.k8s.namespace }}"
+      - "kubectl scale --replicas=0 deployment mysql -n {{env.k8s.namespace}}"
+      - "pvc_name={{template.vars.volume_name}}-{{env.unique}}"
+      - "kubectl delete pvc -n {{env.k8s.namespace}} $pvc_name"
+    dependsOn:
+      - mysql
+  - kind: Database
+    name: mysql
+    dockerCompose:
+      image: "mysql:latest"
+      environment:
+        MYSQL_PASSWORD: {{template.vars.MYSQL_PASSWORD}}
+        MYSQL_ROOT_PASSWORD: {{template.vars.MYSQL_ROOT_PASSWORD}}
+        MYSQL_USER: {{template.vars.MYSQL_USER}}
+      ports:
+        - "3306:3306"
+    volumes:
+      - name: {{template.vars.volume_name}}
+        mount: /var/lib/mysql
+        subPath: ""
+    dependsOn:
+      - volume-snapshot-generator
+volumes:
+  - name: {{template.vars.volume_name}}
+    size: {{template.vars.volume_size}}
+    type: disk

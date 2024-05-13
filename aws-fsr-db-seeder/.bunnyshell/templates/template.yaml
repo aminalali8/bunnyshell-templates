@@ -1,0 +1,14 @@
+name: AWS FSR Database seeding using Volume Snapshots
+description: This template provides a comprehensive solution for seeding databases in AWS using Full Snapshot Restore (FSR) with EBS volume snapshots. It is designed to streamline the process of replicating database states across different environments, enabling faster setup times and improved consistency for testing and development. The template automates the creation and restoration of EBS snapshots into new volumes, attaching them to EC2 instances pre-configured for database operations. This approach minimizes downtime and enhances data integrity by leveraging AWS’s robust snapshot capabilities. Suitable for enterprises that require rapid, reliable database cloning for agile development and QA testing.
+tags:
+   - aws
+   - database
+   - mysql
+   - postgres
+icons: [ 'kubernetes', 'mysql', 'postgres', 'terminal' ]
+stack:
+  packages:
+    - name: Kubernetes
+    - name: Mysql
+    - name: PostgreSQL
+discoverable: true
