@@ -18,14 +18,18 @@ jobs:
         cd .bunnyshell/templates
 
         # Generate the markdown links for each folder
-        FOLDER_LINKS=$(find * -type d -exec echo '- [{}]({}/tree/main/.bunnyshell/templates/{})' \;)
+        FOLDER_LINKS=$(find * -type d -exec echo "- [\{\}]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/tree/${GITHUB_REF#refs/heads/}/.bunnyshell/templates/\{\})" \;)
+
+        # Print the folder links for debugging
+        echo "Folder Links:"
+        echo "$FOLDER_LINKS"
 
         # Navigate back to the root directory
         cd ../..
 
         # Prepare the new README section
-        echo '## Template Directories' > temp_readme.md
-        echo '$FOLDER_LINKS' >> temp_readme.md
+        echo "## Template Directories" > temp_readme.md
+        echo "$FOLDER_LINKS" >> temp_readme.md
 
         # Append the existing README if needed
         tail -n +3 README.md >> temp_readme.md
