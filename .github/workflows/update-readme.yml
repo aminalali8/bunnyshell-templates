@@ -33,8 +33,6 @@ jobs:
           # Prepare the new README section
           echo "## Template Directories" > temp_readme.md
           echo "$FOLDER_LINKS" >> temp_readme.md
-         
-          tail -n +3 README.md >> temp_readme.md
           
           # Replace the old README with the new file
           mv temp_readme.md README.md
