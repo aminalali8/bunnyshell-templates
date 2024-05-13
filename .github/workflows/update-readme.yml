@@ -1,0 +1,42 @@
+name: Update README with Template Links
+
+on:
+  push:
+    paths:
+      - '.bunnyshell/templates/**'
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Generate Directory List and Update README
+      run: |
+        # Navigate to the templates directory
+        cd .bunnyshell/templates
+
+        # Generate the markdown links for each folder
+        FOLDER_LINKS=$(find * -type d -exec echo '- [{}]({}/tree/main/.bunnyshell/templates/{})' \;)
+
+        # Navigate back to the root directory
+        cd ../..
+
+        # Prepare the new README section
+        echo '## Template Directories' > temp_readme.md
+        echo '$FOLDER_LINKS' >> temp_readme.md
+
+        # Append the existing README if needed
+        tail -n +3 README.md >> temp_readme.md
+        
+        # Replace the old README with the new file
+        mv temp_readme.md README.md
+
+        # Stage and commit the changes if there are any
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add README.md
+        git diff --staged --quiet || git commit -m "Update README with template links"
+        git push
+
