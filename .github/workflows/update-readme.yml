@@ -33,10 +33,7 @@ jobs:
           # Prepare the new README section
           echo "## Template Directories" > temp_readme.md
           echo "$FOLDER_LINKS" >> temp_readme.md
-          echo "Repo Contains all my bunnyshell templates." >> temp_readme.md
-          echo "Files can be found under .bunnyshell/templates/template-name" >> temp_readme.md
-
-          # Append the existing README if needed
+         
           tail -n +3 README.md >> temp_readme.md
           
           # Replace the old README with the new file
