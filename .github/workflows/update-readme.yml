@@ -15,25 +15,34 @@ jobs:
           fetch-depth: '0'
 
       - name: Generate Directory List and Update README
-        run: |
-          cd $GITHUB_WORKSPACE  # Make sure to start in the GitHub workspace
+        run: |       
+          # Navigate to the GitHub workspace
+          cd "$GITHUB_WORKSPACE"
 
-          # Navigate to the templates directory
-          cd .bunnyshell/templates
+          # Initialize an array to hold the GitHub links
+          declare -a github_links
 
-          # Generate the markdown links for each folder
-          FOLDER_LINKS=$(find . -type d -mindepth 1 -exec bash -c 'echo "- [$(basename {})](https://github.com/aminalali8/bunnyshell-templates/tree/main/.bunnyshell/templates/$(basename {}))"' \;)
-
-          echo "Folder Links:"
-          echo "$FOLDER_LINKS"
-
-          # Navigate back to the root directory
-          cd $GITHUB_WORKSPACE
+          # Iterate over each README.md file found
+          while IFS= read -r file; do
+            # Extract the folder name that comes after 'completed'
+            folder=$(echo "$file" | sed -e "s|^completed/\([^/]*\)/.*|\1|")
+            
+            # Format the GitHub link
+            github_link="- [$folder](https://github.com/aminalali8/bunnyshell-templates/tree/main/$file)"
+            
+            # Store the link in the array
+            github_links+=("$github_link")
+          done < <(find completed -type f -path '*/.bunnyshell/templates/*/README.md')
 
           # Prepare the new README section
-          echo "## Template Directories" > temp_readme.md
-          echo "$FOLDER_LINKS" >> temp_readme.md
-          
+          echo "## Completed Template Directories" > temp_readme.md
+          for link in "${github_links[@]}"; do
+            echo "$link" >> temp_readme.md
+          done
+
+          # Append the new section to the existing README.md
+          cat README.md >> temp_readme.md
+
           # Replace the old README with the new file
           mv temp_readme.md README.md
 
