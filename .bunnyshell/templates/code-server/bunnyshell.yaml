@@ -34,7 +34,7 @@ components:
                     name: sidecar-code-server
                     shared_paths:
                         -
-                            path: {{template.vars.CODE_SERVER_DEFAULT_WORKSPACE}}
+                            path: '{{template.vars.CODE_SERVER_DEFAULT_WORKSPACE}}'
                             target:
                                 path: '{{template.vars.SOURCE_CODE_PATH}}'
                                 container: '@parent'
@@ -55,13 +55,13 @@ components:
             image: 'lscr.io/linuxserver/code-server:latest'
             environment:
                 DEFAULT_WORKSPACE: '{{template.vars.CODE_SERVER_DEFAULT_WORKSPACE}}'
-                HASHED_PASSWORD: {{template.vars.HASHED_PASSWORD}}
-                PASSWORD: {{template.vars.PASSWORD}}
+                HASHED_PASSWORD: '{{template.vars.HASHED_PASSWORD}}'
+                PASSWORD: '{{template.vars.PASSWORD}}'
                 PGID: '{{template.vars.PGID}}'
-                PROXY_DOMAIN: {{template.vars.PROXY_DOMAIN}}
+                PROXY_DOMAIN: '{{template.vars.PROXY_DOMAIN}}'
                 PUID: '{{template.vars.PUID}}'
-                SUDO_PASSWORD: {{template.vars.SUDO_PASSWORD}}
-                SUDO_PASSWORD_HASH: {{template.vars.SUDO_PASSWORD_HASH}}
-                TZ: {{ template.vars.TZ }}
+                SUDO_PASSWORD: '{{template.vars.SUDO_PASSWORD}}'
+                SUDO_PASSWORD_HASH: '{{template.vars.SUDO_PASSWORD_HASH}}'
+                TZ: '{{ template.vars.TZ }}'
             ports:
                 - '8443:8443'
