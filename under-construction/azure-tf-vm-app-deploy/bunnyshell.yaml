@@ -1,6 +1,8 @@
 kind: Environment
 name: VM-Deployment
 type: primary
+templateVariables:
+  
 environmentVariables:
   ARM_CLIENT_ID: '<<BNS_SECRET>>'
   ARM_CLIENT_SECRET: '<<BNS_SECRET>>'

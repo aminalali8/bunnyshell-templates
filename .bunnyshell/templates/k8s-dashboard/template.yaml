@@ -5,3 +5,7 @@ tags:
     - helm
 icons: [ 'k8s', 'helm' ]
 discoverable: true
+category: 
+  - k8s
+  - helm
+  - dashboard
