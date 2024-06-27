@@ -8,7 +8,6 @@ icons: [ 'vscode', 'docker' ]
 stack:
   packages:
     - name: Code Server
-      version: 'latest'
 discoverable: true
 categories:
     - web-ides
