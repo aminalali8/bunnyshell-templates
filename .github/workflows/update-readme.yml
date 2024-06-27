@@ -45,6 +45,11 @@ jobs:
 
           # Replace the old README with the new file
           mv temp_readme.md README.md
+          
+          # Find all the directories with templates and create symbolic links
+          find completed/*/.bunnyshell/templates -mindepth 1 -maxdepth 1 -type d -exec sh -c 'ln -s "$1" ".bunnyshell/templates/$(basename "$1")"' _ {} \;
+
+          echo "Symbolic links created successfully."
 
           # Stage and commit the changes if there are any
           git config user.email "action@github.com"
