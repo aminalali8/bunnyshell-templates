@@ -47,12 +47,12 @@ components:
             -
                 hostname: '{{template.vars.CODE_SERVER_HOST}}'
                 path: /
-                servicePort: '8443'
+                servicePort: 8443
     -
         kind: SidecarContainer
         name: code-server
         dockerCompose:
-            image: 'lscr.io/linuxserver/code-server:latest'
+            image: 'lscr.io/linuxserver/code-server:4.90.3'
             environment:
                 DEFAULT_WORKSPACE: '{{template.vars.CODE_SERVER_DEFAULT_WORKSPACE}}'
                 HASHED_PASSWORD: '{{template.vars.HASHED_PASSWORD}}'
