@@ -2,8 +2,8 @@ name: Update README with Template Links
 
 on:
   push:
-    paths:
-      - '.bunnyshell/templates/**'
+    branches:
+      - main
 
 jobs:
   update-readme:
